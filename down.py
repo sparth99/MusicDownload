@@ -4,10 +4,17 @@ from pydub import AudioSegment
 import os
 import urllib3
 from bs4 import BeautifulSoup
+import requests
 from requests import get
 from requests.exceptions import RequestException
 from contextlib import closing
 from bs4 import BeautifulSoup
+import json
+import urllib
+from urllib.request import urlopen
+from urllib.parse import urljoin
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, APIC, error
 
 
 
@@ -63,16 +70,68 @@ def getYouTubeUrl(query):
 
 # r = Tk()
 # r.withdraw()
-
-flag = 0
-# result = r.clipboard_get()
-songName = input("Please enter the name of the song: ")
-result = getYouTubeUrl(songName)
-
-while result == None:
-    songName = input("Error: Please type the song differently: ")
+def getAudioClip():
+    songName = input("Please enter the name of the song: ")
+    scrapeImage(songName,os.getcwd())
     result = getYouTubeUrl(songName)
 
+    while result == None:
+        songName = input("Error: Please type the song differently: ")
+        result = getYouTubeUrl(songName)
+    return result
+
+def get_soup(url,header):
+    return BeautifulSoup(requests.get(url,headers=header).text,'html.parser')
+
+def scrapeImage(query, save_directory, output='.img.jpg'):
+    image_type="Action"
+    query = query + " album art"
+    query= query.split()
+    query='+'.join(query)
+    url="https://www.google.co.in/search?q="+query+"&source=lnms&tbm=isch"
+    header={'User-Agent':"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.134 Safari/537.36"}
+    soup = get_soup(url,header)
+    # print(soup)
+    ActualImages=[]# contains the link for Large original images, type of  image
+    for a in soup.find_all("div",{"class":"rg_meta"}):
+        link , Type =json.loads(a.text)["ou"]  ,json.loads(a.text)["ity"]
+        ActualImages.append((link,Type))
+    for img, Type in ActualImages:
+            try:
+                raw_img = urlopen(img).read()
+                f = open(os.path.join(save_directory , output), 'wb')
+                f.write(raw_img)
+                f.close()
+                break
+
+                if not imghdr.what(os.path.join(save_directory, output)) == None:
+                    break
+                else:
+                    os.remove(os.path.join(save_directory, output))
+            except Exception as e:
+                #print("could not load : "+img)
+                #print(e)
+                None
+
+def load_image_inMP3(filename):
+    print("hi")
+    audio = MP3(filename+".mp3")
+    audio.tags.add(
+        APIC(
+            encoding=3, # 3 is for utf-8
+            mime='image/jpeg', # image/jpeg or image/png
+            type=3, # 3 is for the cover image
+            desc=u'Cover',
+            data=open('.img.jpg','rb').read()
+            )
+    )
+    audio.save()
+
+
+
+# result = r.clipboard_get()
+flag = 0
+result = getAudioClip()
 if result != None:
     qual=input("Hit 1 for best clarity, 2 for worst, 3 for other: ")
     qual=int(qual)
@@ -95,9 +154,9 @@ if result != None:
 
     filename = video.audiostreams[index]
     print (filename)
+
     x=filename.download(filepath=filename.title + "." + filename.extension)
     print("Current File Name is " + filename.title + " Would you like to change it\n")
-
     ans = input("Press 1 if you would like to change it else Press 0: ")
     ans = int(ans)
     if ans == 1:
@@ -107,6 +166,9 @@ if result != None:
         AudioSegment.from_file(filename.title + "." + filename.extension).export("/Users/Parth/funProjects/"+newTitle + ".mp3", format="mp3")
     if ans == 0:
         AudioSegment.from_file(filename.title + "." + filename.extension).export("/Users/Parth/funProjects/"+filename.title + ".mp3", format="mp3")
+    load_image_inMP3(filename.title)
     print("Deleting old File...\n")
     os.remove("/Users/Parth/funProjects/"+filename.title + "." + filename.extension)
+    os.remove("/Users/Parth/funProjects/.img.jpg")
+
     print("Done!\n")
