@@ -15,6 +15,7 @@ from urllib.request import urlopen
 from urllib.parse import urljoin
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC, error
+from mutagen.easyid3 import EasyID3
 
 
 
@@ -70,8 +71,9 @@ def getYouTubeUrl(query):
 
 # r = Tk()
 # r.withdraw()
-def getAudioClip():
-    songName = input("Please enter the name of the song: ")
+
+
+def getAudioClip(songName):
     scrapeImage(songName,os.getcwd())
     result = getYouTubeUrl(songName)
 
@@ -113,8 +115,30 @@ def scrapeImage(query, save_directory, output='.img.jpg'):
                 #print(e)
                 None
 
-def load_image_inMP3(filename):
-    print("hi")
+def getMetaData(query):
+    print("Getting meta Data")
+    url = "https://itunes.apple.com/search?term="
+    query= query.split()
+    query='+'.join(query)
+    url = url + query
+    header={'User-Agent':"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.134 Safari/537.36"}
+    req = requests.get(url, headers=header)
+
+    results = req.json()
+
+    # print(result)
+    if(results['resultCount'] > 0):
+        most_likely = None
+        score = 0;
+        for result in results['results']:
+            if  score == 0:
+                most_likely = result
+                score = 1
+        return most_likely
+    return None
+
+
+def load_image_inMP3(filename, artist, title, album):
     audio = MP3(filename+".mp3")
     audio.tags.add(
         APIC(
@@ -126,49 +150,51 @@ def load_image_inMP3(filename):
             )
     )
     audio.save()
+    audio = EasyID3(filename+".mp3")
+
+    audio['title'] = title
+    audio['artist'] = artist
+    audio['album'] = album
+    print(audio['title'])
+    print(audio['artist'])
+    print(audio['album'])
+    audio.save(v2_version=3)
+    return audio['title']
 
 
 
-# result = r.clipboard_get()
-flag = 0
-result = getAudioClip()
-if result != None:
-    qual=input("Hit 1 for best clarity, 2 for worst, 3 for other: ")
-    qual=int(qual)
-    if qual==3:
-    	flag=1
-    c=0
-    url = result
-    video = pafy.new(url)
-    best = video.audiostreams
-    for b in best:
-    	print (str(c)+ " " + str(b))
-    	c+=1;
-    if flag==1:
-    	index=input("Enter index")
-    	index=int(index)
-    elif qual==2:
-    	index=c-1
-    elif qual==1:
-    	index=0
 
-    filename = video.audiostreams[index]
-    print (filename)
+with open('songs.txt') as f:
+    for line in f:
+        songName = line
+        flag = 0
+        result = getAudioClip(songName)
+        if result != None:
 
-    x=filename.download(filepath=filename.title + "." + filename.extension)
-    print("Current File Name is " + filename.title + " Would you like to change it\n")
-    ans = input("Press 1 if you would like to change it else Press 0: ")
-    ans = int(ans)
-    if ans == 1:
-        newTitle = input("Enter new title: ")
-    print("Converting to MP3...\n")
-    if ans == 1:
-        AudioSegment.from_file(filename.title + "." + filename.extension).export("/Users/Parth/funProjects/"+newTitle + ".mp3", format="mp3")
-    if ans == 0:
-        AudioSegment.from_file(filename.title + "." + filename.extension).export("/Users/Parth/funProjects/"+filename.title + ".mp3", format="mp3")
-    load_image_inMP3(filename.title)
-    print("Deleting old File...\n")
-    os.remove("/Users/Parth/funProjects/"+filename.title + "." + filename.extension)
-    os.remove("/Users/Parth/funProjects/.img.jpg")
+            url = result
+            video = pafy.new(url)
+            best = video.audiostreams
 
-    print("Done!\n")
+
+            filename = video.audiostreams[0]
+
+            x=filename.download(filepath=filename.title + "." + filename.extension)
+
+            print("Converting to MP3...\n")
+
+            AudioSegment.from_file(filename.title + "." + filename.extension).export("/Users/Parth/funProjects/"+filename.title + ".mp3", format="mp3")
+            metaData = getMetaData(songName)
+            artist = metaData['artistName']
+            title = metaData['trackName']
+            if metaData['collectionName']:
+                album = metaData['collectionName']
+            else:
+                album = 'none'
+            load_image_inMP3(filename.title, artist, title, album)
+            print("Deleting old File...\n")
+
+            os.remove("/Users/Parth/funProjects/"+filename.title + "." + filename.extension)
+            os.remove("/Users/Parth/funProjects/.img.jpg")
+            os.rename("/Users/Parth/funProjects/"+filename.title + ".mp3","/Users/Parth/funProjects/"+title + ".mp3"  )
+
+            print("Done!\n")
