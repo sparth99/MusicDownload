@@ -3,6 +3,8 @@
 A Python scrips that downloads music with album/cover art and all meta data
 Run through the terminal
 
+The Current GUI down program has some bugs in it. 
+
 Download the correct dependicies listed on the top of the python file
 
 Change the Location of the directory for your own use
