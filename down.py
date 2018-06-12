@@ -151,7 +151,6 @@ def load_image_inMP3(filename, artist, title, album):
     )
     audio.save()
     audio = EasyID3(filename+".mp3")
-
     audio['title'] = title
     audio['artist'] = artist
     audio['album'] = album
@@ -163,38 +162,40 @@ def load_image_inMP3(filename, artist, title, album):
 
 
 
+def main(filename):
+    with open(filename) as f:
+        for line in f:
+            songName = line
+            flag = 0
+            result = getAudioClip(songName)
+            if result != None:
 
-with open('songs.txt') as f:
-    for line in f:
-        songName = line
-        flag = 0
-        result = getAudioClip(songName)
-        if result != None:
-
-            url = result
-            video = pafy.new(url)
-            best = video.audiostreams
+                url = result
+                video = pafy.new(url)
+                best = video.audiostreams
 
 
-            filename = video.audiostreams[0]
+                filename = video.audiostreams[0]
 
-            x=filename.download(filepath=filename.title + "." + filename.extension)
+                x=filename.download(filepath=filename.title + "." + filename.extension)
 
-            print("Converting to MP3...\n")
+                print("Converting to MP3...\n")
 
-            AudioSegment.from_file(filename.title + "." + filename.extension).export("/Users/Parth/funProjects/"+filename.title + ".mp3", format="mp3")
-            metaData = getMetaData(songName)
-            artist = metaData['artistName']
-            title = metaData['trackName']
-            if metaData['collectionName']:
-                album = metaData['collectionName']
-            else:
-                album = 'none'
-            load_image_inMP3(filename.title, artist, title, album)
-            print("Deleting old File...\n")
+                AudioSegment.from_file(filename.title + "." + filename.extension).export("/Users/Parth/funProjects/"+filename.title + ".mp3", format="mp3")
+                metaData = getMetaData(songName)
+                artist = metaData['artistName']
+                title = metaData['trackName']
+                if metaData['collectionName']:
+                    album = metaData['collectionName']
+                else:
+                    album = 'none'
+                load_image_inMP3(filename.title, artist, title, album)
+                print("Deleting old File...\n")
 
-            os.remove("/Users/Parth/funProjects/"+filename.title + "." + filename.extension)
-            os.remove("/Users/Parth/funProjects/.img.jpg")
-            os.rename("/Users/Parth/funProjects/"+filename.title + ".mp3","/Users/Parth/funProjects/"+title + ".mp3"  )
+                os.remove("/Users/Parth/funProjects/"+filename.title + "." + filename.extension)
+                os.remove("/Users/Parth/funProjects/.img.jpg")
+                os.rename("/Users/Parth/funProjects/"+filename.title + ".mp3","/Users/Parth/funProjects/"+title + ".mp3"  )
 
-            print("Done!\n")
+                print("Done!\n")
+
+main('songs.txt')
